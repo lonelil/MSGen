@@ -635,7 +635,7 @@ class Outlook {
 							"client":"XboxCom",
 							"deviceFamily":"Web"
 						},
-						"profileId": body.split('"profiles":{"byId":{"')[1].split('"')[0];
+						"profileId": body.split('"profiles":{"byId":{"')[1].split('"')[0]
 					}
 					const opts2 =  {
 						method: "PUT",
@@ -1024,23 +1024,9 @@ class Outlook {
 
     loadCaptcha() {
 		return new Promise((resolve, reject) => {
-			// request(`http://174.114.200.242:1337/a?uaid=${this.outlookData.uaid}`, (error, response, rofl) => {
-			// 	if (error) {
-			// 		reject({msg: `error`, nextStep: 'loadSite'});
-			// 	} else {
-			// 		try {
-			// 			this.status("Captcha Solved: " + rofl.split("|")[0])
-			// 			this.outlookData.solve = rofl;
-			// 			this.outlookData.solved = true;
-			// 			resolve('main');
-			// 		} catch (err) {
-			// 			reject({msg: `error`, nextStep: 'loadSite'});
-			// 		}
-			// 	}
-			// });
-			request(`http://174.114.200.242:1337/`, (error, response, rofl) => {
+			request(`http://174.114.200.242:1337/`, (error2, response2, rofl) => {
 				fun.getToken({
-				    surl: "http://192.168.1.213:5050/",
+				    surl: "http://174.114.200.242:5050/",
 				    pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
 				    site: `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`,
 				    data: {
@@ -1055,7 +1041,8 @@ class Outlook {
 				        if (fard.error === 'DENIED ACCESS') {
 	                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
 				        } else if (fard.solved) {
-				        	this.status("Obtained Valid Captcha: " + token.token.split("|")[0], "Poop");
+				        	console.log(fard)
+				        	this.status("Solved Captcha: " + token.token.split("|")[0], "Poop");
 				        	this.outlookData.solve = token.token;
 				        	this.outlookData.solved = true;
 							this.controller("main");
