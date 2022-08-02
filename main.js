@@ -13,7 +13,7 @@ function start(data) {
 const { Worker, isMainThread } = require('node:worker_threads');
 
 if (isMainThread) {
-	for(var i = 0; i < 42; i++) {
+	for(var i = 0; i < 12; i++) {
 		new Worker(__filename);
 	}
 } else {
@@ -29,7 +29,7 @@ if (isMainThread) {
 		}
 		let capKey = ""
 		let webhook = "https://discord.com/api/webhooks/1001320310747955301/reog1gjyhMhF5ukBAF7Pl8iLkBe1unmFuxMFmk2hX1XZbewyjxx3yphMWQ5CxLj8H85v"
-		let taskCount = 85
+		let taskCount = 25
 		let captchaLimit = 11
 		for (let i = 0; i < taskCount; i++) {
 			const data = {id: i, key: capKey, webhook: webhook, limit: captchaLimit, proxyList: rawProxies}

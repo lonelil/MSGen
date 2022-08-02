@@ -6,6 +6,7 @@ const password = require('secure-random-password');
 const colors = require('colors')
 const { Webhook, MessageBuilder } = require('discord-webhook-node'); 
 const setCookie = require('set-cookie-parser');
+const fun = require("funcaptcha")
 process.on('unhandledRejection', (err, p) => {});
 function generateValidCard(bin, length) {
 	var cardNumber = generate(bin, length),
@@ -114,7 +115,7 @@ class Outlook {
     }
 
     start() {   
-        this.controller('getIp')
+        this.controller('loadSite')
     }
 
     stop() {
@@ -979,12 +980,7 @@ class Outlook {
                                 this.outlookData.solved = false
                                 this.jar = request.jar()
                                 reject({msg: `Bad captcha submission, restarting session (${this.proxy})`, nextStep: "loadSite"})
-                                print('fail')
-                                print(this.outlookData.solve)
-                            } else {             
-                                // TODO: add more error codes
-
-                                // reject({msg: `Error code: ${loginResp.code}`})})                   
+                            } else {           
                                 reject({msg: `Unforseen response: ${body}`, type: 'Info', nextStep: 'loadSite'})
                             }
                         }
@@ -996,58 +992,44 @@ class Outlook {
         })
     }
 
+    async answer(var0) {
+        var fard = await var0.answer(this.rNum(0, 5));
+    	if (fard.error === 'DENIED ACCESS' || fard.error === 'timed_mode_timeout') {
+    		return await this.answer(var0)
+    	}
+    	return fard;
+    }
+
     loadCaptcha() {
 		return new Promise((resolve, reject) => {
-			// try {
-			// 	solver.funCaptcha("B7D8911C-5CC8-A9A3-35B0-554ACEE604DA", `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`).then(resp => {
-	  //   	    	this.outlookData.solve = resp.data;
-			// 		this.outlookData.solved = true;
-			// 		console.log(resp);
-		 //        	this.controller('main');
-			// 	}).catch(err => {
-		 //        	this.controller('loadCaptcha');
-			// 	});
-			// } catch(err) {
-			// 	console.log(err)
-			// }
-			request(`http://174.114.200.242:1337/a?uaid=${this.outlookData.uaid}`, (error, response, captcha_resp) => {
-				if (error) {
-					reject({msg: `error`, nextStep: 'loadSite'});
-				} else {
-					try {
-						this.status("Captcha Solved: " + captcha_resp.split("|")[0])
-						this.outlookData.solve = captcha_resp;//.replace("meta=7|pk=", "meta=7|lang=en|pk=");
+			fun.getToken({
+			    surl: "http://192.168.1.213:5050/",
+			    pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
+			    site: `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`,
+			    data: {
+			    	"id": "null"
+			    }
+			}).then(async token => { 
+			    let session = new fun.Session(token)
+			    let challenge = await session.getChallenge()
+			    for(let x = 0; x <= challenge.data.game_data.waves; x++) {
+			        var fard = await this.answer(challenge);
+			        if (fard.error === 'DENIED ACCESS') {
+                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
+			        } else if (fard.solved) {
+			        	this.status("Obtained Valid Captcha: " + token.token.split("|")[0], "");
+			        	this.outlookData.solve = token.token;
 						this.outlookData.solved = true;
-						resolve('loadCaptcha');
-					} catch (err) {
-
-					}
-				}
-			});
-			// fun.getToken({
-			//     headers: {
-			// 		   "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36'
-			//     },
-			//     surl: "http://192.168.1.213:5050/",
-			//     pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
-			//     site: `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`
-			// }).then(async token => { 
-			//     let session = new fun.Session(token)
-			//     let challenge = await session.getChallenge()
-			//     console.log(token.token + " | Solved")
-			//     for(let x = 0; x < challenge.data.game_data.waves; x++) {
-			//         var fard = await challenge.answer(this.rNum(0, 5));
-			//         if (fard.error || (fard.response && fard.response !== 'answered')) {
-			//         	reject({msg: "Captcha Unsolvable", nextStep: 'loadCaptcha'})
-			//         } else if (fard.solved) {
-			//         	resolve('main')
-			//         	this.outlookData.solve = fard.decryption_key;
-			// 			this.outlookData.solved = true;
-			//         } else {
-			//         	reject({msg: "Captcha Unsolvable", nextStep: 'loadCaptcha'});
-			//         }
-			//     }
-			// })
+						resolve("main");
+			        } else if (fard.response === undefined) {
+                        reject({msg: "poop", nextStep: 'loadCaptcha'})
+			        } else if (fard.error) {
+                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
+			        } else {
+                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
+			        }
+			    }
+			})
 		});
     }
     
@@ -1090,7 +1072,6 @@ class Outlook {
     }
 
     errorCodes() {
-        // TODO: Add matching functionality for extra codes
         let codes = {
             "hipValidationError": "1043",
             "hipNeeded": "1040",
@@ -1157,8 +1138,6 @@ class Outlook {
             "uaid":this.outlookData.uaid,
             "SuggestedAccountType":"OUTLOOK",
             "SuggestionType":"Locked",
-            // TODO: Figure out HFId and significance
-            //"HFId":"9a166ed80043424d883dafb778efec5d",
             "encAttemptToken":"",
             "dfpRequestId":"",
             "scid":100118,
@@ -1206,8 +1185,6 @@ class Outlook {
             "uaid": this.outlookData.uaid,
             "SuggestedAccountType":"EASI",
             "SuggestionType":"Prefer",
-            // TODO: Figure out HFId and significance
-            //"HFId":"405de830c1434978bfe8f047e6dca9dc",
             "HType":"enforcement",
             "HSol":this.outlookData.solve,
             "HPId":"B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
@@ -1216,8 +1193,6 @@ class Outlook {
             "scid":100118,
             "hpgid":201040
         }
-        // 75561a25d05247be7.4193130101|r=us-east-1|metabgclr=%23ffffff|maintxtclr=%231B1B1B|mainbgclr=%23ffffff|guitextcolor=%23747474|metaiconclr=%23757575|meta_height=325|meta=7|lang=en|pk=B7D8911C-5CC8-A9A3-35B0-554ACEE604DA|at=40|ag=101|cdn_url=https%3A%2F%2Fclient-api.arkoselabs.com%2Fcdn%2Ffc|lurl=https%3A%2F%2Faudio-us-east-1.arkoselabs.com|surl=https%3A%2F%2Fclient-api.arkoselabs.com
-        // 99861a26197e42154.0037844305|r=eu-west-1|metabgclr=%23ffffff|maintxtclr=%231B1B1B|mainbgclr=%23ffffff|guitextcolor=%23747474|metaiconclr=%23757575|meta_height=325|meta=7|pk=B7D8911C-5CC8-A9A3-35B0-554ACEE604DA|at=40|ht=1|ag=101|cdn_url=https%3A%2F%2Fclient-api.arkoselabs.com%2Fcdn%2Ffc|lurl=https%3A%2F%2Faudio-eu-west-1.arkoselabs.com|surl=https%3A%2F%2Fclient-api.arkoselabs.com
         return body
     }
 
