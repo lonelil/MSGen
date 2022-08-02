@@ -1024,7 +1024,8 @@ class Outlook {
 
     loadCaptcha() {
 		return new Promise((resolve, reject) => {
-			request(`http://174.114.200.242:1337/`, (error2, response2, rofl) => {
+			request(`http://174.114.200.242:1337/`, (error2, response2, body) => {
+				const rofl = JSON.parse(body);
 				fun.getToken({
 				    surl: "http://174.114.200.242:5050/",
 				    pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
@@ -1036,12 +1037,12 @@ class Outlook {
 				}).then(async token => { 
 				    let session = new fun.Session(token)
 				    let challenge = await session.getChallenge()
+				    console.log(challenge.data.game_data.waves)
 				    for(let x = 0; x <= challenge.data.game_data.waves; x++) {
 				        var fard = await this.answer(challenge);
 				        if (fard.error === 'DENIED ACCESS') {
 	                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
 				        } else if (fard.solved) {
-				        	console.log(fard)
 				        	this.status("Solved Captcha: " + token.token.split("|")[0], "Poop");
 				        	this.outlookData.solve = token.token;
 				        	this.outlookData.solved = true;
