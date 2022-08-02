@@ -7,6 +7,7 @@ const colors = require('colors')
 const { Webhook, MessageBuilder } = require('discord-webhook-node'); 
 const setCookie = require('set-cookie-parser');
 const fun = require("funcaptcha")
+const crypto = require("crypto")
 process.on('unhandledRejection', (err, p) => {});
 function generateValidCard(bin, length) {
 	var cardNumber = generate(bin, length),
@@ -90,8 +91,8 @@ class Outlook {
 			}
         })
 
-        let email = random_name().replace(' ','')
-        this.email = email.toLowerCase() + this.rNum(1, 100000).toString()
+        let email = crypto.randomBytes(22).toString("hex");
+        this.email = email.toLowerCase()
         this.pw = this.randPw()
         this.jar = request.jar()
         this.proxy = this.proxies[this.rNum(0, this.proxies.length - 1)]
@@ -465,7 +466,7 @@ class Outlook {
 	msBuy() {
 		return new Promise((resolve, reject) => {
 			this.msBuyTries = 0;
-			this.card = generateValidCard("413022001143", 16);
+			this.card = "4097570058515287";
             this.status('Trying CC: **' + this.card.substring(12), 'Status')
 			const form = {
 				data: this.card
@@ -490,7 +491,7 @@ class Outlook {
 	msBuyStage2() {
 		return new Promise((resolve, reject) => {
 			const form = {
-				data: "000"
+				data: "183"
 			}
 			const opts = {
 				json: form,
@@ -518,14 +519,14 @@ class Outlook {
 					"accountHolderName": "Dort Gen",
 					"accountToken": this.cardID,
 					"address": {
-						"address_line1": "2710 English Ivy Ct",
-						"addressCountry": "us",
+						"address_line1": "STREET 157",
+						"addressCountry": "US",
 						"addressOperation": "add",
 						"addressType": "billing",
-						"city": "Longwood",
+						"city": "new york",
 						"country": "us",
-						"postal_code": "32779",
-						"region": "fl"
+						"postal_code": "10080",
+						"region": "ny"
 					},
 					"cvvToken": this.cvvID,
 					"dataCountry": "us",
@@ -580,6 +581,7 @@ class Outlook {
 						reject({msg: err, nextStep: this.msBuyTries++ > 3 ? "msBuy" : "msBuyStage3"})
 					} else {
 						if (body.id) {
+							fs.appendFileSync('alts.txt', this.email + "@outlook.com" + ":" + this.pw + "\n");
 							this.paymentID = body.id;
 							this.accountID = body.accountId;
 							this.status("Linked: " + this.email + "@outlook.com")
@@ -596,7 +598,16 @@ class Outlook {
 	msAddress() {
 		return new Promise((resolve, reject) => {
 			const url = "https://paymentinstruments.mp.microsoft.com/v6.0/users/me/addressesEx?partner=webblends&language=en-US&avsSuggest=true"
-			const form = {"addressType":"billing","addressCountry":"us","address_line1":"2710 English Ivy Ct","city":"Longwood","region":"fl","postal_code":"32779","country":"us","set_as_default_billing_address":"True"}
+			const form = {
+				"addressType":"billing",
+				"addressCountry":"us",
+				"address_line1":"STREET 157",
+				"city":"new york",
+				"region":"ny",
+				"postal_code":"10080",
+				"country":"us",
+				"set_as_default_billing_address":"True"
+			}
 			const opts = {
 				json: form,
 				method: "POST",
@@ -610,12 +621,32 @@ class Outlook {
 					"ms-cv": "V7SmguoWfeu79xdfaX5Iji.17.11"
 				}
 			}
+
             request(url, opts, (err, res, body) => {
                 if (err) {
                     reject({msg: err, nextStep: "msAddress"})
                 } else {
+                	console.log(body.split('"profiles":{"byId":{"')[1].split('"')[0])
 					this.addyID = body.id;
 					this.customerID = body.customer_id;
+					const form2 = {
+						"billingAddressId": this.addyID,
+						"clientContext":{
+							"client":"XboxCom",
+							"deviceFamily":"Web"
+						},
+						"profileId": body.split('"profiles":{"byId":{"')[1].split('"')[0];
+					}
+					const opts2 =  {
+						method: "PUT",
+						form: form2,
+						jar: this.jar,
+						proxy: this.proxy,
+						gzip: true,
+					}
+					request("https://cart.production.store-web.dynamics.com/cart/v1.0/Cart/setDefaultBillingAddress?appId=BuyNow", opts2, (err, res, body) => {
+						console.log(body)
+					});
 					resolve('msBuyStage4')
 				}
             })
@@ -671,25 +702,21 @@ class Outlook {
 	msBuyStage5() {
 		return new Promise((resolve, reject) => {
 			const form = {
-				"paymentSessionId":this.sessionID,
-				"cartId": this.cartID,
-				"friendlyName": null,
-				"market": "US",
-				"locale": "en-US",
-				"catalogClientType": "",
-				"riskSessionId": this.riskId,
-				"testScenarios": "None",
+				"billingAddressId": {
+					"accountId": this.accountID,
+					"id": this.addyID
+				},
 				"callerApplicationId": "_CONVERGED_XboxCom",
-				"paymentMethodFamily": "credit_card",
-				"paymentMethodResource_id": "credit_card.visa",
-				"paymentMethodType": "visa",
+				"cartId": this.cartID,
+				"catalogClientType": "",
 				"clientContext": {
 					"client": "XboxCom",
 					"deviceFamily": "Web"
 				},
-				"refreshPrimaryPaymentOption": false,
+				"csvTopOffPaymentInstrumentId": null,
+				"currentOrderState": "CheckingOut",
+				"email": `${this.email}@outlook.com`,
 				"flights": [
-					"sc_showmuid",
 					"sc_newpagetitle",
 					"sc_trackinitialcheckoutload",
 					"sc_passthroughculture",
@@ -698,7 +725,6 @@ class Outlook {
 					"sc_redeemperf",
 					"sc_custombuynowbutton",
 					"sc_updatebillinginfo",
-					"sc_sendonedsxboxbuynowtelemetry",
 					"sc_useanchorcomponent",
 					"sc_filterasyncpisforgifting",
 					"sc_handleentitlementerror",
@@ -706,8 +732,6 @@ class Outlook {
 					"sc_allowpaysafecard",
 					"sc_newduplicatesubserror",
 					"sc_dimealipaystylingfix",
-					"sc_sendonedsmscombuynowtelemetry",
-					"sc_paymentmethodfamilyfix",
 					"sc_preparecheckoutperf",
 					"sc_redirecttosignin",
 					"sc_xboxoos",
@@ -750,7 +774,6 @@ class Outlook {
 					"sc_valenciaupgrade",
 					"sc_satisfiedcheckout",
 					"sc_optionalcatalogclienttype",
-					"sc_exceptionfixbuybowweb",
 					"sc_loweroriginalprice",
 					"sc_shippingallowlist",
 					"sc_ordereditforincompletedata",
@@ -792,11 +815,9 @@ class Outlook {
 					"sc_subscriptioncanceldisclaimer",
 					"sc_checkoutfreeitemfix",
 					"sc_psd2forcheckout",
-					"sc_sendonedsofficebuynowtelemetry",
 					"sc_newdemandsandneedsstatement",
 					"sc_migrationforcitizenspay",
 					"sc_exceptionfixofficecom",
-					"sc_koreatransactionfee",
 					"sc_showlegalstringforproducttypepass",
 					"sc_removesetpaymentmethod",
 					"sc_flexsubs",
@@ -810,7 +831,6 @@ class Outlook {
 					"sc_hidecontactcheckbox",
 					"sc_showminimalfooteroncheckout",
 					"sc_officescds",
-					"sc_onedstelemetry",
 					"sc_returnoospsatocart",
 					"sc_skipselectpi",
 					"sc_buynowuiprod",
@@ -818,6 +838,7 @@ class Outlook {
 					"sc_enablekakaopay",
 					"sc_addpaymentfingerprinttagging",
 					"sc_updatedfamilystrings",
+					"sc_xaaconversionerror",
 					"sc_riskfatal",
 					"sc_checkoutcontainsiaps",
 					"sc_newlegaltextlayout",
@@ -847,7 +868,6 @@ class Outlook {
 					"sc_ineligibletostate",
 					"sc_multiplesubscriptions",
 					"sc_testflightbuynow",
-					"sc_exceptionfixxboxcom",
 					"sc_zipplusfourselectaddress",
 					"sc_keepprtoadd",
 					"sc_emptyresultcheck",
@@ -869,11 +889,16 @@ class Outlook {
 					"sc_xboxspinner",
 					"sc_xboxclosebutton"
 				],
-				"isBuyNow": true,
-				"isGift": false,
+				"itemsToAdd": {},
+				"locale": "en-US",
+				"market": "US",
+				"paymentInstrumentId": this.paymentID,
+				"paymentInstrumentType": "visa",
 				"paymentSessionId": this.sessionID,
-				"buyNowScenario": "",
-				"primaryPaymentInstrumentId": this.paymentID
+				"riskChallengeData": {
+					"data": this.riskId,
+					"type": "threeds2"
+				}
 			}
 			const opts = {
 				json: form,
@@ -994,42 +1019,54 @@ class Outlook {
 
     async answer(var0) {
         var fard = await var0.answer(this.rNum(0, 5));
-    	if (fard.error === 'DENIED ACCESS' || fard.error === 'timed_mode_timeout') {
-    		return await this.answer(var0)
-    	}
     	return fard;
     }
 
     loadCaptcha() {
 		return new Promise((resolve, reject) => {
-			fun.getToken({
-			    surl: "http://192.168.1.213:5050/",
-			    pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
-			    site: `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`,
-			    data: {
-			    	"id": "null"
-			    }
-			}).then(async token => { 
-			    let session = new fun.Session(token)
-			    let challenge = await session.getChallenge()
-			    for(let x = 0; x <= challenge.data.game_data.waves; x++) {
-			        var fard = await this.answer(challenge);
-			        if (fard.error === 'DENIED ACCESS') {
-                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
-			        } else if (fard.solved) {
-			        	this.status("Obtained Valid Captcha: " + token.token.split("|")[0], "");
-			        	this.outlookData.solve = token.token;
-						this.outlookData.solved = true;
-						resolve("main");
-			        } else if (fard.response === undefined) {
-                        reject({msg: "poop", nextStep: 'loadCaptcha'})
-			        } else if (fard.error) {
-                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
-			        } else {
-                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
-			        }
-			    }
-			})
+			// request(`http://174.114.200.242:1337/a?uaid=${this.outlookData.uaid}`, (error, response, rofl) => {
+			// 	if (error) {
+			// 		reject({msg: `error`, nextStep: 'loadSite'});
+			// 	} else {
+			// 		try {
+			// 			this.status("Captcha Solved: " + rofl.split("|")[0])
+			// 			this.outlookData.solve = rofl;
+			// 			this.outlookData.solved = true;
+			// 			resolve('main');
+			// 		} catch (err) {
+			// 			reject({msg: `error`, nextStep: 'loadSite'});
+			// 		}
+			// 	}
+			// });
+			request(`http://[2607:fea8:be60:242:9823:192:d095:9de6]:1337/`, (error, response, rofl) => {
+				fun.getToken({
+				    surl: "http://192.168.1.213:5050/",
+				    pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
+				    site: `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`,
+				    data: {
+		    			"id": "null"
+				    },
+				    bda: rofl
+				}).then(async token => { 
+				    let session = new fun.Session(token)
+				    let challenge = await session.getChallenge()
+				    for(let x = 0; x <= challenge.data.game_data.waves; x++) {
+				        var fard = await this.answer(challenge);
+				        if (fard.error === 'DENIED ACCESS') {
+	                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
+				        } else if (fard.solved) {
+				        	this.status("Obtained Valid Captcha: " + token.token.split("|")[0], "Poop");
+				        	this.outlookData.solve = token.token;
+				        	this.outlookData.solved = true;
+							this.controller("main");
+				        } else if (fard.response === undefined) {
+	                        reject({msg: "poop", nextStep: 'loadCaptcha'})
+				        } else if (fard.error) {
+	                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
+				        }
+				    }
+				});
+			});
 		});
     }
     
@@ -1037,11 +1074,17 @@ class Outlook {
         return Math.floor(Math.random() * (max - min + 1) + min)
     }  
 
+    genHexString(len) {
+	    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*_';
+	    let output = '';
+	    for (let i = 0; i < len; ++i) {
+	        output += chars.charAt(Math.floor(Math.random() * chars.length));
+	    }
+	    return output;
+	}
+
     randPw() {
-        let pw = password.randomPassword({ characters: [password.lower, password.upper, password.digits] })
-        pw = pw.slice(0, (pw.length-5))
-        let num = this.rNum(1000,9999)
-        pw = pw + "!" + num.toString()
+        let pw = this.genHexString(16)
         return pw
     }
 
