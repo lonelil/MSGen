@@ -1,0 +1,37 @@
+{
+   "name":"msgen",
+   "version":"1.0.0",
+   "description":"How to use this project:",
+   "main":"main.js",
+   "devDependencies":{
+      
+   },
+   "scripts":{
+      "test":"echo \"Error: no test specified\" && exit 1"
+   },
+   "repository":{
+      "type":"git",
+      "url":"git+https://github.com/WinterTempIQ/MSGen.git"
+   },
+   "keywords":[
+      
+   ],
+   "author":"",
+   "license":"ISC",
+   "bugs":{
+      "url":"https://github.com/WinterTempIQ/MSGen/issues"
+   },
+   "homepage":"https://github.com/WinterTempIQ/MSGen#readme",
+   "dependencies":{
+      "puppeteer":"^16.0.0",
+      "puppeteer-extra":"^3.3.4",
+      "puppeteer-extra-plugin-stealth":"^2.11.0",
+      "colors":"^1.4.0",
+      "discord-webhook-node":"^1.1.8",
+      "funcaptcha":"^1.0.17",
+      "node-random-name":"^1.0.1",
+      "request":"^2.88.2",
+      "secure-random-password":"^0.2.3",
+      "set-cookie-parser":"^2.5.1"
+   }
+}
