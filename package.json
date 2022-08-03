@@ -28,7 +28,6 @@
       "puppeteer-extra-plugin-stealth":"^2.11.0",
       "colors":"^1.4.0",
       "discord-webhook-node":"^1.1.8",
-      "funcaptcha":"^1.0.17",
       "node-random-name":"^1.0.1",
       "request":"^2.88.2",
       "secure-random-password":"^0.2.3",
