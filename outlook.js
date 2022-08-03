@@ -466,7 +466,7 @@ class Outlook {
 	msBuy() {
 		return new Promise((resolve, reject) => {
 			this.msBuyTries = 0;
-			this.card = "4097570058515287";
+			this.card = generateValidCard("BIN HERE WITHOUT X'S", 16) // TODO: put your bin here.
             this.status('Trying CC: **' + this.card.substring(12), 'Status')
 			const form = {
 				data: this.card
@@ -626,28 +626,32 @@ class Outlook {
                 if (err) {
                     reject({msg: err, nextStep: "msAddress"})
                 } else {
-                	console.log(body.split('"profiles":{"byId":{"')[1].split('"')[0])
-					this.addyID = body.id;
-					this.customerID = body.customer_id;
-					const form2 = {
-						"billingAddressId": this.addyID,
-						"clientContext":{
-							"client":"XboxCom",
-							"deviceFamily":"Web"
-						},
-						"profileId": body.split('"profiles":{"byId":{"')[1].split('"')[0]
+                	try {
+	                	console.log(body.split('"profiles":{"byId":{"')[1].split('"')[0])
+						this.addyID = body.id;
+						this.customerID = body.customer_id;
+						const form2 = {
+							"billingAddressId": this.addyID,
+							"clientContext":{
+								"client":"XboxCom",
+								"deviceFamily":"Web"
+							},
+							"profileId": body.split('"profiles":{"byId":{"')[1].split('"')[0]
+						}
+						const opts2 =  {
+							method: "PUT",
+							form: form2,
+							jar: this.jar,
+							proxy: this.proxy,
+							gzip: true,
+						}
+						request("https://cart.production.store-web.dynamics.com/cart/v1.0/Cart/setDefaultBillingAddress?appId=BuyNow", opts2, (err, res, bodyz) => {
+							console.log(bodyz)
+						});
+						resolve('msBuyStage4')
+					} catch (ex) {
+	                    reject({msg: err, nextStep: "msAddress"})	
 					}
-					const opts2 =  {
-						method: "PUT",
-						form: form2,
-						jar: this.jar,
-						proxy: this.proxy,
-						gzip: true,
-					}
-					request("https://cart.production.store-web.dynamics.com/cart/v1.0/Cart/setDefaultBillingAddress?appId=BuyNow", opts2, (err, res, body) => {
-						console.log(body)
-					});
-					resolve('msBuyStage4')
 				}
             })
 
@@ -1024,37 +1028,46 @@ class Outlook {
 
     loadCaptcha() {
 		return new Promise((resolve, reject) => {
-			request(`http://174.114.200.242:1337/`, (error2, response2, body) => {
-				const rofl = JSON.parse(body);
-				fun.getToken({
-				    surl: "http://174.114.200.242:5050/",
-				    pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
-				    site: `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`,
-				    data: {
-		    			"id": "null"
-				    },
-				    bda: rofl
-				}).then(async token => { 
-				    let session = new fun.Session(token)
-				    let challenge = await session.getChallenge()
-				    console.log(challenge.data.game_data.waves)
-				    for(let x = 0; x <= challenge.data.game_data.waves; x++) {
-				        var fard = await this.answer(challenge);
-				        if (fard.error === 'DENIED ACCESS') {
-	                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
-				        } else if (fard.solved) {
-				        	this.status("Solved Captcha: " + token.token.split("|")[0], "Poop");
-				        	this.outlookData.solve = token.token;
-				        	this.outlookData.solved = true;
-							this.controller("main");
-				        } else if (fard.response === undefined) {
-	                        reject({msg: "poop", nextStep: 'loadCaptcha'})
-				        } else if (fard.error) {
-	                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
-				        }
-				    }
+			try {
+				request(`http://localhost:8082/`, (error2, response2, body) => {
+					try {
+						const rofl = JSON.parse(body);
+						fun.getToken({
+						    surl: "http://174.114.200.242:5050/",
+						    pkey: "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA",
+						    site: `https://signup.live.com/signup?uaid=${this.outlookData.uaid}`,
+						    data: {
+				    			"id": "null"
+						    },
+						    bda: rofl
+						}).then(async token => { 
+						    let session = new fun.Session(token)
+						    let challenge = await session.getChallenge({
+						    	userAgent: rofl.agent
+						    })
+						    for(let x = 0; x <= challenge.data.game_data.waves; x++) {
+						        var fard = await this.answer(challenge);
+						        if (fard.error === 'DENIED ACCESS') {
+			                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
+						        } else if (fard.solved) {
+						        	this.status("Solved Captcha: " + token.token.split("|")[0], "Poop");
+						        	this.outlookData.solve = token.token;
+						        	this.outlookData.solved = true;
+									this.controller("main");
+						        } else if (fard.response === undefined) {
+			                        reject({msg: "poop", nextStep: 'loadCaptcha'})
+						        } else if (fard.error) {
+			                        reject({msg: fard.error, nextStep: 'loadCaptcha'})
+						        }
+						    }
+						});
+					} catch (ex) {
+	                	reject({msg: ex, nextStep: 'loadCaptcha'})
+					}
 				});
-			});
+			} catch (ex) {
+                reject({msg: ex, nextStep: 'loadCaptcha'})
+			}
 		});
     }
     
